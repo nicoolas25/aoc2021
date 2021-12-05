@@ -1,54 +1,53 @@
-from part1 import (
-    Board,
-    DrawSet,
-    board_wins_with,
-    read_inputs,
-    sum_of_unmarked_numbers,
-)
+from part1 import read_inputs, sum_of_unmarked_numbers, wins_with_draw
 
+# Unrelated to Board itself, FastBoard implements RowsAndColumns
+# implicitly but optimize for accessing rows and columns sets.
+#
+# To make this optimization, we needed to rework the part1 to
+# find a common ground between implementations that could be reused.
+# This wasn't necessary with singledispatch where we could overload
+# some functions directly.
 class FastBoard:
-    def __init__(self, board: Board):
-        self.raw_board = board
-        self.winning_sets = [
-            *[ # Rows
-                set(row)
-                for row in board
-            ],
-            *[ # Cols
-                set(row[col_index] for row in board)
-                for col_index in range(len(board))
-            ],
+    def __init__(self, matrix):
+        # Optimize for those row and column access right from the __init__
+        self._rows = [set(row) for row in matrix]
+        self._columns = [
+            set(row[col_index] for row in matrix)
+            for col_index in range(len(matrix))
         ]
 
-@board_wins_with.register
-def fast_board__board_wins_with(board: FastBoard, numbers: DrawSet):
-    return any(
-        winning_set <= numbers
-        for winning_set in board.winning_sets
-    )
+    def rows(self):
+        yield from self._rows
 
-@sum_of_unmarked_numbers.register
-def fast_board__sum_of_unmarked_numbers(board: FastBoard, numbers: DrawSet):
-    return sum_of_unmarked_numbers(board.raw_board, numbers)
+    def columns(self):
+        yield from self._columns
 
+def last_board_to_win(boards, full_draw):
+    boards = boards.copy()
+    for uppper_index in range(4, len(full_draw)):
+        draw = full_draw[0:uppper_index]
+        draw_set = set(draw)
+
+        winning_boards = [
+            board
+            for board in boards
+            if wins_with_draw(board, draw_set)
+        ]
+        for winning_board in winning_boards:
+            boards.remove(winning_board)
+
+        if len(boards) == 0:
+            return (winning_boards[0], draw)
+    raise ValueError("Some board never wins")
 
 if __name__ == "__main__":
     import fileinput
 
-    full_draw, raw_boards = read_inputs([line.strip() for line in fileinput.input()])
-    boards = [FastBoard(board) for board in raw_boards]
-
-    for uppper_index in range(4, len(full_draw)):
-        draw = full_draw[0:uppper_index]
-        draw_set = set(draw)
-        winning_boards = [
-            board
-            for board in boards
-            if board_wins_with(board, draw_set)
-        ]
-        for winning_board in winning_boards:
-            boards.remove(winning_board)
-        if not boards:
-            last_winning_board = winning_boards[0]
-            print(sum_of_unmarked_numbers(last_winning_board, draw_set) * draw[-1])
-            break
+    # Toggling on and off the optimized data structure by switching to 'Board'.
+    # The rest of the code can stay the same.
+    full_draw, boards = read_inputs(
+        [line.strip() for line in fileinput.input()],
+        board_class=FastBoard,
+    )
+    board, draw = last_board_to_win(boards, full_draw)
+    print(sum_of_unmarked_numbers(board, draw) * draw[-1])
