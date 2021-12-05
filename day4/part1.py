@@ -1,9 +1,12 @@
-from typing import List, Tuple
+from functools import singledispatch
+from typing import List, Tuple, Set
 
 Draw = List[int]
+DrawSet = Set[int]
 Board = List[List[int]]
 
-def board_wins_with(board: Board, draw: Draw) -> bool:
+@singledispatch
+def board_wins_with(board: Board, draw: DrawSet) -> bool:
     for row in board:
         if sum(cell in draw for cell in row) == len(board):
             return True
@@ -12,7 +15,8 @@ def board_wins_with(board: Board, draw: Draw) -> bool:
             return True
     return False
 
-def sum_of_unmarked_numbers(board: Board, draw: Draw) -> int:
+@singledispatch
+def sum_of_unmarked_numbers(board: Board, draw: DrawSet) -> int:
     return sum(
         sum(cell for cell in row if cell not in draw)
         for row in board
@@ -34,14 +38,15 @@ def read_inputs(lines) -> Tuple[Draw, List[Board]]:
 if __name__ == "__main__":
     import fileinput
 
-    draws, boards = read_inputs([line.strip() for line in fileinput.input()])
+    full_draw, boards = read_inputs([line.strip() for line in fileinput.input()])
 
-    for uppper_index in range(4, len(draws)):
-        numbers = draws[0:uppper_index]
+    for uppper_index in range(4, len(full_draw)):
+        draw = full_draw[0:uppper_index]
+        draw_set = set(draw)
         board = next(
-            (board for board in boards if board_wins_with(board, numbers)),
+            (board for board in boards if board_wins_with(board, draw_set)),
             None,
         )
         if board:
-            print(sum_of_unmarked_numbers(board, numbers) * numbers[-1])
+            print(sum_of_unmarked_numbers(board, draw_set) * draw[-1])
             break
