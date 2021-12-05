@@ -31,16 +31,17 @@ def read_inputs(lines) -> Tuple[Draw, List[Board]]:
     ]
     return (draw, boards)
 
-import fileinput
+if __name__ == "__main__":
+    import fileinput
 
-draws, boards = read_inputs([line.strip() for line in fileinput.input()])
+    draws, boards = read_inputs([line.strip() for line in fileinput.input()])
 
-for uppper_index in range(4, len(draws)):
-    numbers = draws[0:uppper_index]
-    board = next(
-        (board for board in boards if board_wins_with(board, numbers)),
-        None,
-    )
-    if board:
-        print(sum_of_unmarked_numbers(board, numbers) * numbers[-1])
-        break
+    for uppper_index in range(4, len(draws)):
+        numbers = draws[0:uppper_index]
+        board = next(
+            (board for board in boards if board_wins_with(board, numbers)),
+            None,
+        )
+        if board:
+            print(sum_of_unmarked_numbers(board, numbers) * numbers[-1])
+            break
