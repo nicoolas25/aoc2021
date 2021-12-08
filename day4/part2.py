@@ -1,41 +1,27 @@
-from part1 import read_inputs, sum_of_unmarked_numbers, wins_with_draw
-
-# Unrelated to Board itself, FastBoard implements RowsAndColumns
-# implicitly but optimize for accessing rows and columns sets.
-#
-# To make this optimization, we needed to rework the part1 to
-# find a common ground between implementations that could be reused.
-# This wasn't necessary with singledispatch where we could overload
-# some functions directly.
-class FastBoard:
-    def __init__(self, matrix):
-        # Optimize for those row and column access right from the __init__
-        self._rows = [set(row) for row in matrix]
-        self._columns = [
-            set(row[col_index] for row in matrix)
-            for col_index in range(len(matrix))
-        ]
-
-    def rows(self):
-        yield from self._rows
-
-    def columns(self):
-        yield from self._columns
+from part1 import cache_by_id, read_inputs, sum_of_unmarked_numbers, wins_with_draw
 
 def last_board_to_win(boards, full_draw):
+    @cache_by_id
+    def get_rows_and_cols(board):
+        rows = [set(row) for row in board]
+        cols = [set(row[col_index] for row in board) for col_index in range(len(board))]
+        return (rows, cols)
+
     boards = boards.copy()
     for uppper_index in range(4, len(full_draw)):
         draw = full_draw[0:uppper_index]
         draw_set = set(draw)
-
         winning_boards = [
             board
             for board in boards
-            if wins_with_draw(board, draw_set)
+            if wins_with_draw(
+                *get_rows_and_cols(board),
+                draw_set
+            )
         ]
         for winning_board in winning_boards:
             boards.remove(winning_board)
-
+            get_rows_and_cols.clear(winning_board)
         if len(boards) == 0:
             return (winning_boards[0], draw)
     raise ValueError("Some board never wins")
@@ -45,9 +31,6 @@ if __name__ == "__main__":
 
     # Toggling on and off the optimized data structure by switching to 'Board'.
     # The rest of the code can stay the same.
-    full_draw, boards = read_inputs(
-        [line.strip() for line in fileinput.input()],
-        board_class=FastBoard,
-    )
+    full_draw, boards = read_inputs([line.strip() for line in fileinput.input()])
     board, draw = last_board_to_win(boards, full_draw)
     print(sum_of_unmarked_numbers(board, draw) * draw[-1])
