@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from functools import partial
 from typing import Container, Iterable
 
 @dataclass(frozen=True)
